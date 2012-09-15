@@ -141,7 +141,7 @@ function run(options, cb) {
 			});
 		}, errorCallback.bind(null, section.text + '->before'));
 	}, function(err, results) {
-		switch(options.output) {
+		switch(options.format) {
 		case 'data':
 			cb(results);
 			break;

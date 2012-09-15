@@ -45,7 +45,7 @@ moka.run();
 ### moka.run options:
 
 `moka.run()` can be called with options. For example:
-```
+```javascript
 moka.run({
 	parallel: false,
 	format: 'tap',
