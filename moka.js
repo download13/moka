@@ -5,15 +5,6 @@ var describeStack = [];
 var sections = [];
 var totalTests = 0;
 
-function getArgs(fn, helpers) { // I'm hoping this is safe...
-	var fns = fn.toString();
-	var args = fns.substring(fns.indexOf('(') + 1, fns.indexOf(')')).match(/([^\s,]+)/g);
-	if(args == null) return [];
-	return args.map(function(arg) {
-		return helpers[arg];
-	});
-}
-
 var helpers = {
 	it: function(text, task) {
 		var test = {text: text, task: task};
@@ -34,6 +25,14 @@ var helpers = {
 		describeStack[describeStack.length - 1].afterEach = task;
 	}
 };
+function getArgs(fn, helpers) { // I'm hoping this is safe...
+	var fns = fn.toString();
+	var args = fns.substring(fns.indexOf('(') + 1, fns.indexOf(')')).match(/([^\s,]+)/g);
+	if(args == null) return [];
+	return args.map(function(arg) {
+		return helpers[arg];
+	});
+}
 
 function describe(text, task) {
 	if(describeStack.length > 0) {
@@ -46,37 +45,74 @@ function describe(text, task) {
 	sections.push(desc);
 	
 	var args = getArgs(task, helpers);
-	task.apply(null, args);
+	task.apply(null, args); // They setup task needs to run synchronously
 	
 	describeStack.pop();
 }
 
-function decoupled(fn) { // Return a version of the function that is decoupled from the current call stack
-	return function() { // We don't really care about parameters from here
-		process.nextTick(fn);
+// Make sure that we can escape from the domain that we ran the code inside
+// This must be called from outside the domain and the escape route (r) sent inside
+function decoupled(fn) {
+	var n = setInterval(function() {
+		if(r.called) {
+			clearInterval(n);
+			process.nextTick(fn);
+		}
+	}, 50);
+	
+	var r = function() {
+		r.called = true;
 	}
+	r.called = false;
+	r.cancel = function() {
+		clearInterval(n);
+	}
+	
+	return r;
 }
-function callAsync(fn, cb) {
-	if(fn == null) return cb();
-	
-	var args = getArgs(fn, {
-		done: decoupled(cb), // Decoupled so exception stacks in subsequent tests will be less confusing
-		assert: assert.bind(null, cb),
-		expect: expect.bind(null, cb)
-	}); // TODO: Once an error has occurred how do we stop that test? throw? Or just let the execution continue until done is called and stop it from fireing cb again?
-	
+
+// Takes a function to call asynchronously, a callback, and an optional failure callback
+// If the failure callback is not specified, errors are reported to the regular callback
+function callAsync(fn, cb, errcb) {
+	if(fn == null) return process.nextTick(cb);
 	if(fn.length == 0) {
-		fn.apply(null, args);
-		cb();
+		var err;
+		try {
+			fn();
+		} catch(e) {
+			err = e;
+		}
+		process.nextTick(cb.bind(null, err));
 	} else {
-		fn.apply(null, args);
+		var escapeRoute = decoupled(cb);
+		var handlerCalled = false;
+		function errorHandler(err) {
+			if(handlerCalled || escapeRoute.called) return;
+			handlerCalled = true;
+			
+			escapeRoute.cancel();
+			if(errcb != null) errcb(err);
+			else cb(err);
+		}
+		
+		
+		var d = domain.create();
+		d.on('error', errorHandler);
+		fn = d.bind(fn); // Bound version
+		// TODO: Maybe use a setTimeout to make sure the test finishes
+		
+		fn(escapeRoute);
 	}
 }
 
-var currentTest;
+function errorCallback(info, err) {
+	console.error('Error: ' + info);
+	throw err;
+}
+
 function run(options, cb) {
 	options = options || {};
-	if(cb == null) cb = function() {}
+	cb = cb || console.log;
 	
 	var parallel = options.parallel == false ? false : true;
 	var map = async.mapSeries;
@@ -89,19 +125,21 @@ function run(options, cb) {
 				callAsync(section.beforeEach, function() {
 					callAsync(test.task, function(err) {
 						var result = {name: test.text, passed: err == null};
-						if(err) result.stack = err.stack;
+						if(err != null) {
+							result.stack = err.stack;
+						}
 						callAsync(section.afterEach, function() {
 							if(parallel) cb(null, result); // It's safe to keep running the other tests if one failed
 							else cb(err, result); // Other tests might be dependent on the one that failed
-						});
+						}, errorCallback.bind(null, section.text + '->afterEach'));
 					});
-				});
+				}, errorCallback.bind(null, section.text + '->beforeEach'));
 			}, function(err, results) {
 				callAsync(section.after, function() {
 					cb(err, {name: section.text, tests: results});
-				});
+				}, errorCallback.bind(null, section.text + '->after'));
 			});
-		});
+		}, errorCallback.bind(null, section.text + '->before'));
 	}, function(err, results) {
 		switch(options.output) {
 		case 'data':
@@ -113,17 +151,16 @@ function run(options, cb) {
 			break;
 			
 		case 'brief':
-			console.log(formatBrief(results));
+			cb(formatBrief(results));
 			break;
 			
 		default:
-			console.log(formatConsole(results));
+			cb(formatConsole(results));
 		}
 	});
-	// TODO: TAP output later
 }
 
-function formatConsole(data, totalTests) {
+function formatConsole(data) {
 	var r = '';
 	
 	data.forEach(function(section) {
@@ -167,27 +204,19 @@ function formatTAP(data) {
 	
 	var r = '1..' + testCount + '\n';
 	var counter = 0;
+	var lines = [];
 	data.forEach(function(section) {
 		section.tests.forEach(function(test) {
 			counter++;
-			r += (test.passed ? '' : 'not ') + 'ok ' + counter + ' ' + test.name + '\n';
+			lines.push((test.passed ? '' : 'not ') + 'ok ' + counter + ' ' + test.name);
 		});
 	});
+	r += lines.join('\n');
 	
-	if(testCount < totalTests) r += 'Bail out!\n'; // Fewer tests finished than existed, we must have bailed somewhere
+	if(testCount < totalTests) r += '\nBail out!'; // Fewer tests finished than existed, we must have bailed somewhere
 	
 	return r;
 }
 
 exports.describe = describe;
 exports.run = run;
-
-function assert(cb, a) {
-	if(!a) {
-		cb(new Error());
-	}
-}
-// TODO: expect
-function expect() {
-	
-}

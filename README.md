@@ -2,20 +2,22 @@ I like Mocha. Sort of...
 
 It's got a nice convenient set of functions for organizing your tests, but it keeps throwing strange errors that it seems to have created on it's own.
 Some of that is probably just due to the fact that it uses the `vm` module and can't be helped, but I really would rather it didn't interfere in my test code in any way that isn't
-explicitly visible. To that end, I bashed this out today.
+explicitly visible. To that end, I bashed this out. This was done over the course of two days. It will have bugs.
 
 ### Example test file:
 ```javascript
 var moka = require('moka');
 var describe = moka.describe;
 
-describe('Test something', function(it) { // List any helper functions you need in the parameters: it, before, beforeEach, after, afterEach
+describe('Test something', function(it) { // Only include the helpers you need
+	// Helpers are: it, before, beforeEach, after, afterEach
+	
 	it('does something synch', function() {
 		if(3 !== 3) throw new Error();
 	});
 	
 	// Supports nesting describes
-	describe('#something more specific', function(it, after, beforeEach) { // They can be in any order as long as the names are right
+	describe('#something more specific', function(it, after, beforeEach) {
 		var setup;
 		
 		beforeEach(function() {
@@ -46,15 +48,18 @@ moka.run();
 ```
 moka.run({
 	parallel: false,
-	output: 'tap',
+	format: 'tap',
 }, function(tap) { // Callback gets the output that you selected (except for console output)
 	// Do something with the TAP string
 });
 ```
 
-The option `output` can have a number of values. By default it's set to the string 'console', which just prints the output to the console in a semi-organized manner.
-'brief' can be used to output to the console in an abbreviated form (only show a summary and stack traces for the failed tests).
-Set it to 'tap' and `moka.run` will return a [TAP](https://github.com/isaacs/node-tap) compatible string in the callback. Setting it to 'data' will return an array of the following form:
+If a callback is included in the call, the output will be sent to the callback instead of the console.
+The option `format` can have a number of values. By default it's set to 'console', which just produces output suitable for the console.
+'brief' is an abbreviated form of 'console' (only show a summary and stack traces for the failed tests).
+'tap' outputs a [TAP](https://github.com/isaacs/node-tap) compatible string. Setting it to 'data' will simply return the raw, unformatted test data.
+
+The raw data has the following structure:
 ```javascript
 [ // Each element is a section (describe call)
 	{name: 'Section name', tests: [ // All the tests in that section (only directly, not ones in sub-sections)
@@ -77,5 +82,8 @@ As always, you can use any assertion library you want.
 ### Use as a command line utility:
 ```
 moka
+moka sometestfile.js
+moka testdir1 testdir2 testfile.js
 ```
-Yeah, that's it. All it does is run `test.js` and any `.js` files it finds in the `test` or `spec` directory at the current path, then dumps the output of each test file separated by an empty line.
+When run without arguments all it does is run `test.js` and any `.js` files it finds in the `test` or `spec` directory at the current path, then dumps the output of each test file separated by an empty line.
+When run with arguments it checks only the directories and files given as arguments that exist.

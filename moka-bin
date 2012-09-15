@@ -7,28 +7,36 @@ var async = require('async');
 
 function getChildren(dir) {
 	var r = [];
-	try {
-		var listing = fs.readdirSync(dir);
-	} catch(e) {
-		return [];
+	
+	if(arguments.length > 1) {
+		Array.prototype.slice.call(arguments, 0).forEach(function(dir) {
+			r = r.concat(getChildren(dir));
+		});
+		return r;
 	}
 	
-	listing.forEach(function(child) {
-		child = path.join(dir, child);
-		if(fs.statSync(child).isDirectory()) {
-			r = r.concat(getChildren(child));
-		} else r.push(child);
-	});
-	
-	return r;
+	if(!fs.existsSync(dir)) return [];
+	if(fs.statSync(dir).isDirectory()) {
+		fs.readdirSync(dir).forEach(function(child) {
+			child = path.join(dir, child);
+			if(fs.statSync(child).isDirectory()) {
+				r = r.concat(getChildren(child));
+			} else r.push(child);
+		});
+		return r;
+	} else return [dir];
 }
 
-var tests = getChildren('test').concat(getChildren('spec')).filter(function(item) {
+
+var args;
+if(process.argv > 2) args = process.argv.slice(2);
+else args = ['spec', 'test', 'test.js'];
+var tests = getChildren.apply(null, args).filter(function(item) {
 	return path.extname(item) == '.js';
 });
-if(fs.existsSync('test.js')) tests.push('test.js');
 
 async.forEachSeries(tests, function(testfile, cb) {
+	console.log('\x1b[1;33m' + testfile);
 	var child = child_process.spawn('node', [testfile]);
 	child.stderr.pipe(process.stderr);
 	child.stdout.pipe(process.stdout);

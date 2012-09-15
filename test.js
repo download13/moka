@@ -20,10 +20,11 @@ describe('I', function(it) {
 			asynctest = 1;
 			done();
 		}, 200);
+		
 	});
 	it('fails in parallel mode', function(done) {
-		setTimeout(function(assert) {
-			assert(asynctest == 1);
+		setTimeout(function() {
+			expect(asynctest).to.be(1);
 			done();
 		}, 100);
 	});
@@ -47,8 +48,8 @@ describe('I', function(it) {
 });
 
 describe('II', function(it, after) {
-	it('throws', function(assert) {
-		assert(false);
+	it('throws', function() {
+		throw new Error('test error');
 	});
 	it('try this one anyway', function() {
 		return;
@@ -96,10 +97,12 @@ moka.run({output: 'data'}, function(data) { // Run the tests
 	expect(tests[0].name).to.be('throws');
 	expect(tests[0].passed).to.be(false);
 	expect(tests[0].stack).to.be.a('string');
+	
+	
 	expect(tests[1].name).to.be('try this one anyway');
 	expect(tests[1].passed).to.be(true);
 	
-	console.log('Passed in parallel mode');
+	console.log('Parallel modeL passed');
 	
 	testSerial();
 });
@@ -149,18 +152,18 @@ function testSerial() {
 	});
 }
 
-// TODO: Maybe improve the TAP tests more later
+// TODO: Maybe improve the TAP tests later
 function testTAP() {
 	moka.run({output: 'tap'}, function(tap) {
 		tap = tap.split('\n');
-		expect(tap.length).to.be(8);
+		expect(tap.length).to.be(9);
 		
 		console.log('TAP passed in parallel mode');
 		
 		moka.run({parallel: false, output: 'tap'}, function(tap) {
 			tap = tap.split('\n');
-			expect(tap.length).to.be(8);
-			expect(tap[6]).to.be('Bail out!');
+			expect(tap.length).to.be(9);
+			expect(tap[tap.length - 1]).to.be('Bail out!');
 			
 			console.log('TAP passed in serial mode');
 			console.log('Done');
