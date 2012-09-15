@@ -1,0 +1,39 @@
+#!/usr/bin/env node
+
+var fs = require('fs');
+var path = require('path');
+var child_process = require('child_process');
+var async = require('async');
+
+function getChildren(dir) {
+	var r = [];
+	try {
+		var listing = fs.readdirSync(dir);
+	} catch(e) {
+		return [];
+	}
+	
+	listing.forEach(function(child) {
+		child = path.join(dir, child);
+		if(fs.statSync(child).isDirectory()) {
+			r = r.concat(getChildren(child));
+		} else r.push(child);
+	});
+	
+	return r;
+}
+
+var tests = getChildren('test').concat(getChildren('spec')).filter(function(item) {
+	return path.extname(item) == '.js';
+});
+if(fs.existsSync('test.js')) tests.push('test.js');
+
+async.forEachSeries(tests, function(testfile, cb) {
+	var child = child_process.spawn('node', [testfile]);
+	child.stderr.pipe(process.stderr);
+	child.stdout.pipe(process.stdout);
+	child.on('exit', function() {
+		console.log('');
+		cb();
+	});
+});

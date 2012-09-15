@@ -1,0 +1,24 @@
+{
+	"name": "moka",
+	"version": "0.1.0",
+	"description": "Like Mocha, but doesn't get in my damn way",
+	"author": "download <download333@gmail.com>",
+	"main": "moka",
+	"bin": {
+		"moka": "moka-bin"
+	},
+	"scripts": {
+		"test": "node test"
+	},
+	"dependencies": {
+		"async": "~0.1.22"
+	},
+	"devDependencies": {
+		"expect.js": "~0.1.2"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/download13/moka"
+	},
+	"license": "GPL"
+}
