@@ -87,3 +87,5 @@ moka testdir1 testdir2 testfile.js
 ```
 When run without arguments all it does is run `test.js` and any `.js` files it finds in the `test` or `spec` directory at the current path, then dumps the output of each test file separated by an empty line.
 When run with arguments it checks only the directories and files given as arguments that exist.
+
+Because all it does is run the test files with Node, you can use different types of tests together, even different test frameworks. The only requirement is that they be runnable Node scripts.
