@@ -8,7 +8,7 @@ var totalTests = 0;
 
 var helpers = {
 	it: function(text, task, timeout) {
-		var test = {text: text, task: task};
+		var test = {text: text, task: task, timeout: timeout || DEFAULT_TIMEOUT};
 		var desc = describeStack[describeStack.length - 1];
 		desc.tests.push(test);
 		totalTests++;
@@ -63,7 +63,11 @@ function decoupled(fn) {
 	}, 50);
 	
 	var r = function() {
+		if(r.called) {
+			throw new Error('done() called more than once');
+		}
 		r.called = true;
+		r.onCall && r.onCall();
 	}
 	r.called = false;
 	r.cancel = function() {
@@ -73,9 +77,9 @@ function decoupled(fn) {
 	return r;
 }
 
-// Takes a function to call asynchronously, a callback, and an optional failure callback
+// Takes a function to call asynchronously, a timeout for when it should return with an error, a callback, and an optional failure callback
 // If the failure callback is not specified, errors are reported to the regular callback
-function callAsync(fn, cb, errcb) {
+function callAsync(fn, timeout, cb, errcb) {
 	if(fn == null) return process.nextTick(cb);
 	if(fn.length == 0) {
 		var err;
@@ -87,11 +91,15 @@ function callAsync(fn, cb, errcb) {
 		process.nextTick(cb.bind(null, err));
 	} else {
 		var escapeRoute = decoupled(cb);
-		var handlerCalled = false;
+		timeout = timeout || DEFAULT_TIMEOUT;
+		timeout = setTimeout(errorHandler.bind(null, new Error('Test took longer than ' + timeout + 'ms')), timeout);
+		escapeRoute.onCall = clearTimeout.bind(null, timeout); // On success disable timeout
+		var handlerCalled = false; // Make sure we can't call the error handler more than once
 		function errorHandler(err) {
 			if(handlerCalled || escapeRoute.called) return;
 			handlerCalled = true;
 			
+			clearTimeout(timeout); // On error disable the timeout
 			escapeRoute.cancel();
 			if(errcb != null) errcb(err);
 			else cb(err);
@@ -122,22 +130,22 @@ function run(options, cb) {
 	
 	// It's fucking Christmas!
 	map(sections, function(section, cb) {
-		callAsync(section.before, function() {
+		callAsync(section.before, DEFAULT_TIMEOUT, function() {
 			map(section.tests, function(test, cb) {
-				callAsync(section.beforeEach, function() {
-					callAsync(test.task, function(err) {
+				callAsync(section.beforeEach, DEFAULT_TIMEOUT, function() {
+					callAsync(test.task, test.timeout, function(err) {
 						var result = {name: test.text, passed: err == null};
 						if(err != null) {
 							result.stack = err.stack;
 						}
-						callAsync(section.afterEach, function() {
+						callAsync(section.afterEach, DEFAULT_TIMEOUT, function() {
 							if(parallel) cb(null, result); // It's safe to keep running the other tests if one failed
 							else cb(err, result); // Other tests might be dependent on the one that failed
 						}, errorCallback.bind(null, section.text + '->afterEach'));
 					});
 				}, errorCallback.bind(null, section.text + '->beforeEach'));
 			}, function(err, results) {
-				callAsync(section.after, function() {
+				callAsync(section.after, DEFAULT_TIMEOUT, function() {
 					cb(err, {name: section.text, tests: results});
 				}, errorCallback.bind(null, section.text + '->after'));
 			});

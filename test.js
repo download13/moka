@@ -48,6 +48,9 @@ describe('I', function(it) {
 });
 
 describe('II', function(it, after) {
+	it('fails due to timeout', function(done) {
+		setTimeout(done, 1000);
+	}, 500);
 	it('throws', function() {
 		throw new Error('test error');
 	});
@@ -93,16 +96,17 @@ moka.run({format: 'data'}, function(data) { // Run the tests
 	
 	var tests = data[2].tests;
 	expect(data[2].name).to.be('II');
-	expect(tests).to.have.length(2);
-	expect(tests[0].name).to.be('throws');
+	expect(tests).to.have.length(3);
+	expect(tests[0].name).to.be('fails due to timeout');
 	expect(tests[0].passed).to.be(false);
 	expect(tests[0].stack).to.be.a('string');
+	expect(tests[1].name).to.be('throws');
+	expect(tests[1].passed).to.be(false);
+	expect(tests[1].stack).to.be.a('string');
+	expect(tests[2].name).to.be('try this one anyway');
+	expect(tests[2].passed).to.be(true);
 	
-	
-	expect(tests[1].name).to.be('try this one anyway');
-	expect(tests[1].passed).to.be(true);
-	
-	console.log('Parallel modeL passed');
+	console.log('Parallel mode passed');
 	
 	testSerial();
 });
@@ -142,11 +146,11 @@ function testSerial() {
 		var tests = data[2].tests;
 		expect(data[2].name).to.be('II');
 		expect(tests).to.have.length(1);
-		expect(tests[0].name).to.be('throws');
+		expect(tests[0].name).to.be('fails due to timeout');
 		expect(tests[0].passed).to.be(false);
 		expect(tests[0].stack).to.be.a('string');
 		
-		console.log('Passed in serial mode');
+		console.log('Serial mode passed');
 		
 		testTAP();
 	});
@@ -156,7 +160,7 @@ function testSerial() {
 function testTAP() {
 	moka.run({format: 'tap'}, function(tap) {
 		tap = tap.split('\n');
-		expect(tap.length).to.be(9);
+		expect(tap.length).to.be(10);
 		
 		console.log('TAP passed in parallel mode');
 		

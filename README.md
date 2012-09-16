@@ -27,7 +27,7 @@ describe('Test something', function(it) { // Only include the helpers you need
 		it('pretends its actually async', function(done) {
 			if(isFinite(setup.length / 0)) throw new Error();
 			done();
-		});
+		}, 200); // Set a timeout. If the test takes longer than this it will fail. Default is 5 seconds
 		
 		it('doesnt matter what this does', function() {
 			setup += ', but not important enough to preserve it';
