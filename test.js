@@ -64,7 +64,7 @@ beforeRan = 0;
 afterRan = 0;
 aftRan = 0;
 
-moka.run({output: 'data'}, function(data) { // Run the tests
+moka.run({format: 'data'}, function(data) { // Run the tests
 	expect(beforeRan).to.be(2);
 	expect(afterRan).to.be(2);
 	expect(aftRan).to.be(1);
@@ -112,7 +112,7 @@ function testSerial() {
 	afterRan = 0;
 	aftRan = 0;
 	
-	moka.run({parallel: false, output: 'data'}, function(data) { // Run the tests in serial mode
+	moka.run({parallel: false, format: 'data'}, function(data) { // Run the tests in serial mode
 		expect(beforeRan).to.be(2);
 		expect(afterRan).to.be(2);
 		expect(aftRan).to.be(1);
@@ -154,13 +154,13 @@ function testSerial() {
 
 // TODO: Maybe improve the TAP tests later
 function testTAP() {
-	moka.run({output: 'tap'}, function(tap) {
+	moka.run({format: 'tap'}, function(tap) {
 		tap = tap.split('\n');
 		expect(tap.length).to.be(9);
 		
 		console.log('TAP passed in parallel mode');
 		
-		moka.run({parallel: false, output: 'tap'}, function(tap) {
+		moka.run({parallel: false, format: 'tap'}, function(tap) {
 			tap = tap.split('\n');
 			expect(tap.length).to.be(9);
 			expect(tap[tap.length - 1]).to.be('Bail out!');
