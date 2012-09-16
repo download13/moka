@@ -1,12 +1,13 @@
 var async = require('async');
 var domain = require('domain');
 
+var DEFAULT_TIMEOUT = 5000;
 var describeStack = [];
 var sections = [];
 var totalTests = 0;
 
 var helpers = {
-	it: function(text, task) {
+	it: function(text, task, timeout) {
 		var test = {text: text, task: task};
 		var desc = describeStack[describeStack.length - 1];
 		desc.tests.push(test);
@@ -25,6 +26,7 @@ var helpers = {
 		describeStack[describeStack.length - 1].afterEach = task;
 	}
 };
+// Gets the parameter names from the function source so we know what to send to it
 function getArgs(fn, helpers) { // I'm hoping this is safe...
 	var fns = fn.toString();
 	var args = fns.substring(fns.indexOf('(') + 1, fns.indexOf(')')).match(/([^\s,]+)/g);
