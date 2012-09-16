@@ -36,12 +36,11 @@ var tests = getChildren.apply(null, args).filter(function(item) {
 });
 
 async.forEachSeries(tests, function(testfile, cb) {
-	console.log('\x1b[1;33m' + testfile);
+	console.log('\x1b[1;33m' + testfile + '\x1b[0m');
 	var child = child_process.spawn('node', [testfile]);
 	child.stderr.pipe(process.stderr);
 	child.stdout.pipe(process.stdout);
 	child.on('exit', function() {
-		console.log('');
 		cb();
 	});
 });
