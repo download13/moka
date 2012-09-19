@@ -49,7 +49,7 @@ moka.run();
 moka.run({
 	parallel: false,
 	format: 'tap',
-}, function(tap) { // Callback gets the output that you selected (except for console output)
+}, function(tap) {
 	// Do something with the TAP string
 });
 ```
