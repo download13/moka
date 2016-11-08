@@ -1,3 +1,5 @@
+## Deprecated
+
 I like Mocha. Sort of...
 
 It's got a nice convenient set of functions for organizing your tests, but it keeps throwing strange errors that it seems to have created on it's own.
